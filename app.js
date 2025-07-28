@@ -5,16 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================================
     // 🔥🔥🔥 Firebase 設定區塊 🔥🔥🔥
     // =================================================================================
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBAxZOmBEEZquT623QMFWPqRA3vXAXhomc",
-  authDomain: "yuanhealcohol.firebaseapp.com",
-  projectId: "yuanhealcohol",
-  storageBucket: "yuanhealcohol.firebasestorage.app",
-  messagingSenderId: "378813081392",
-  appId: "1:378813081392:web:14ee47af19fb55ee380af5",
-  measurementId: "G-FV4GMT8EP2"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyBAxZOmBEEZquT623QMFWPqRA3vXAXhomc",
+      authDomain: "yuanhealcohol.firebaseapp.com",
+      projectId: "yuanhealcohol",
+      storageBucket: "yuanhealcohol.firebasestorage.app",
+      messagingSenderId: "378813081392",
+      appId: "1:378813081392:web:14ee47af19fb55ee380af5",
+      measurementId: "G-FV4GMT8EP2"
+    };
 
     // --- 初始化 Firebase ---
     try {
@@ -73,7 +72,7 @@ const firebaseConfig = {
         populateAllSelects();
         const activePageId = $('.page.active')?.id || 'home';
         
-        renderMilestones(); // 確保里程碑總是更新
+        renderMilestones();
         
         switch(activePageId) {
             case 'home':
@@ -107,7 +106,7 @@ const firebaseConfig = {
     function showPage(pageId) {
         if (pageId === 'admin' && !currentUser) {
             showToast('請先登入管理員帳號', 'warning');
-            openModal('adminLoginSection'); // 直接打開登入介面
+            openModal('adminLoginSection');
             return;
         }
         $$('.page').forEach(p => p.classList.remove('active'));
@@ -181,7 +180,6 @@ const firebaseConfig = {
 
     // ===== 功能邏輯 =====
     
-    // 取酒
     $('#takeBeerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const memberId = $('#takeMemberSelect').value;
@@ -220,7 +218,6 @@ const firebaseConfig = {
         e.target.reset();
     });
 
-    // 換酒
     $('#exchangeForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const memberId = $('#exchangeMemberSelect').value;
@@ -268,7 +265,6 @@ const firebaseConfig = {
         $$('.hidden').forEach(el => el.classList.add('hidden'));
     });
 
-    // 儲值
     let selectedAmount = 0;
     $$('.amount-btn').forEach(btn => btn.addEventListener('click', () => {
         $$('.amount-btn').forEach(b => b.classList.remove('selected'));
@@ -295,7 +291,6 @@ const firebaseConfig = {
         selectedAmount = 0;
     });
 
-    // 賣酒
     let selectedQty = 0;
     $$('.qty-btn').forEach(btn => btn.addEventListener('click', (e) => {
         $$('.qty-btn').forEach(b => b.classList.remove('selected'));
@@ -343,40 +338,43 @@ const firebaseConfig = {
         selectedQty = 0;
     });
     
-    // ... 其他功能邏輯 ...
-
     // ===== App 初始化 =====
     function init() {
-        // 綁定靜態事件
         $$('.modal-backdrop, .modal-close').forEach(el => el.addEventListener('click', () => el.closest('.modal').classList.remove('active')));
         $$('.nav-link').forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); showPage(e.target.getAttribute('href').substring(1)); }));
         $('.logo').addEventListener('click', () => showPage('home'));
         $('#mobileMenuToggle').addEventListener('click', () => $('#navMenu').classList.toggle('active'));
         
-        // 登入相關
         $('#loginBtn').addEventListener('click', () => openModal('adminLoginSection'));
         $('#logoutBtn').addEventListener('click', async () => {
             await auth.signOut();
             showToast('已登出');
         });
         
-        // 監聽認證狀態
+        $('#adminLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = $('#adminUsername').value;
+            const password = $('#adminPassword').value;
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                showToast('管理員登入成功', 'success');
+            } catch (error) {
+                showToast(`登入失敗: ${error.message}`, 'error');
+            }
+        });
+
         auth.onAuthStateChanged(user => {
             currentUser = user;
-            if (user) {
-                $('#loginStatus').textContent = user.email;
-                $('#loginBtn').classList.add('hidden');
-                $('#logoutBtn').classList.remove('hidden');
+            const loggedIn = !!user;
+            $('#loginStatus').textContent = user ? user.email : '未登入';
+            $('#loginBtn').classList.toggle('hidden', loggedIn);
+            $('#logoutBtn').classList.toggle('hidden', !loggedIn);
+            $('#adminDashboard').classList.toggle('hidden', !loggedIn);
+            if(loggedIn) {
                 closeModal('adminLoginSection');
-                $('#adminDashboard').classList.remove('hidden');
-            } else {
-                $('#loginStatus').textContent = '未登入';
-                $('#loginBtn').classList.remove('hidden');
-                $('#logoutBtn').classList.add('hidden');
-                $('#adminDashboard').classList.add('hidden');
-                if ($('#admin').classList.contains('active')) {
-                    showPage('home');
-                }
+            }
+            if (!loggedIn && $('#admin').classList.contains('active')) {
+                showPage('home');
             }
         });
 
@@ -387,10 +385,5 @@ const firebaseConfig = {
 
     init();
     
-    // 將需要從 HTML on-click 呼叫的函式掛載到 window.app
-    window.app = {
-        showPage,
-        openModal,
-        closeModal
-    };
+    window.app = { showPage, openModal, closeModal };
 });
