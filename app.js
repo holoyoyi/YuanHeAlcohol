@@ -1,20 +1,19 @@
 // =================================================================================
-//  員和共購酒水網 V0.34δ - Firebase 整合最終版
+//  員和共購酒水網 V0.35γ - Firebase 整合最終版
 // =================================================================================
 document.addEventListener('DOMContentLoaded', () => {
     // =================================================================================
     // 🔥🔥🔥 Firebase 設定區塊 🔥🔥🔥
     // =================================================================================
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBAxZOmBEEZquT623QMFWPqRA3vXAXhomc",
-  authDomain: "yuanhealcohol.firebaseapp.com",
-  projectId: "yuanhealcohol",
-  storageBucket: "yuanhealcohol.firebasestorage.app",
-  messagingSenderId: "378813081392",
-  appId: "1:378813081392:web:14ee47af19fb55ee380af5",
-  measurementId: "G-FV4GMT8EP2"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyBAxZOmBEEZquT623QMFWPqRA3vXAXhomc",
+      authDomain: "yuanhealcohol.firebaseapp.com",
+      projectId: "yuanhealcohol",
+      storageBucket: "yuanhealcohol.appspot.com", // 修正: 使用 .appspot.com 格式
+      messagingSenderId: "378813081392",
+      appId: "1:378813081392:web:14ee47af19fb55ee380af5",
+      measurementId: "G-FV4GMT8EP2"
+    };
 
     // --- 初始化 Firebase ---
     let db, auth;
@@ -386,5 +385,12 @@ const firebaseConfig = {
 
     init();
     
-    window.app = { showPage, openModal, closeModal };
+    // 將需要從 HTML on-click 呼叫的函式掛載到 window
+    // 這樣 HTML 中的 onclick="window.app.someFunction()" 才能運作
+    window.app = {
+        showPage,
+        openModal,
+        closeModal
+        // 如果有其他需要從 HTML 直接呼叫的函式，也加到這裡
+    };
 });
