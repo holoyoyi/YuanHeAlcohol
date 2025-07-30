@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>員和共購酒水網 V0.41γ</title>
+    <title>員和共購酒水網 V0.44γ</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,7 +28,7 @@
         <nav class="navbar">
             <div class="container">
                 <div class="nav-wrapper">
-                    <div class="logo"><h1>員和共購酒水網 V0.41γ</h1></div>
+                    <div class="logo"><h1>員和共購酒水網 V0.44γ</h1></div>
                     <button class="mobile-menu-toggle" id="mobileMenuToggle"><span></span><span></span><span></span></button>
                     <div class="nav-menu" id="navMenu">
                         <div class="nav-links">
@@ -171,7 +171,21 @@
                         <button class="tab-btn" data-tab="members">會員管理</button>
                     </div>
                     <div id="businessTab" class="tab-content active"><div class="charts-grid"><div class="card chart-card"><h3>熱銷酒款排行</h3><canvas id="popularItemsChart"></canvas></div><div class="card chart-card"><h3>會員消費總額排行</h3><canvas id="memberSpendingChart"></canvas></div></div></div>
-                    <div id="accountingTab" class="tab-content"><h3>待核可儲值申請</h3><div id="pendingTopUps" class="approvals-grid"></div></div>
+                    <div id="accountingTab" class="tab-content">
+                        <h3>待核可儲值申請</h3>
+                        <div id="pendingTopUps" class="approvals-grid"></div>
+                        <h3 style="margin-top: 32px;">交易紀錄</h3>
+                        <div class="form-group">
+                            <label for="transactionMemberFilter" class="form-label">篩選會員紀錄</label>
+                            <select id="transactionMemberFilter" class="form-control member-select"></select>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead><tr><th>時間</th><th>會員</th><th>類型</th><th>項目</th><th>金額</th></tr></thead>
+                                <tbody id="transactionsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
                     <div id="inventoryTab" class="tab-content">
                          <div class="form-section"><h3 id="inventoryFormTitle">新增/編輯酒水</h3><form id="inventoryForm"><input type="hidden" id="inventoryItemId"><div class="form-row"><div class="form-group"><label>品牌</label><input type="text" id="inventoryBrand" class="form-control" required></div><div class="form-group"><label>酒款名</label><input type="text" id="inventoryName" class="form-control" required></div></div><div class="form-row"><div class="form-group"><label>ml數</label><input type="text" id="inventoryMl" class="form-control" required></div><div class="form-group"><label>價格</label><input type="number" id="inventoryPrice" class="form-control" required></div></div><div class="form-row"><div class="form-group"><label>庫存</label><input type="number" id="inventoryStock" class="form-control" required></div><div class="form-group"><label>條碼 (選填)</label><input type="text" id="inventoryBarcode" class="form-control"></div></div><div class="form-actions" style="display:flex; gap: 16px;"><button type="submit" class="btn btn--primary" style="flex: 1;">儲存</button><button type="button" id="cancelEditInventoryBtn" class="btn btn--outline hidden" style="flex: 1;">取消編輯</button></div></form></div>
                          <div class="table-container"><table class="data-table"><thead><tr><th>品牌</th><th>酒款</th><th>ml</th><th>價格</th><th>庫存</th><th>條碼</th><th>操作</th></tr></thead><tbody id="inventoryTableBody"></tbody></table></div>

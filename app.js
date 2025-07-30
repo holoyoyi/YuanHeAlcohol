@@ -1,5 +1,5 @@
 /* ==========================================================================
-   員和共購酒水網 V0.41γ - JavaScript 應用程式 (事件監聽修復版)
+   員和共購酒水網 V0.43γ - JavaScript 應用程式 (功能完整修復版)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedQty = 0;
     let currentEditingMemberId = null;
     let currentEditingInventoryId = null;
+    let currentScannerTarget = {};
 
     // ===== DOM 元素快取 =====
     const $ = (selector) => document.querySelector(selector);
@@ -99,7 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const collections = ['inventory', 'members', 'activities', 'transactions', 'pendingTopUps'];
         collections.forEach(name => {
-            appState.unsubscribe[name] = db.collection(name).onSnapshot(snapshot => {
+            const query = name === 'transactions' ? db.collection(name).orderBy('timestamp', 'desc') : db.collection(name);
+            appState.unsubscribe[name] = query.onSnapshot(snapshot => {
                 appState[name] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 rerenderAll();
             }, error => console.error(`讀取 ${name} 失敗:`, error));
@@ -123,13 +125,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== UI 填充 =====
     function populateAllSelects() {
         const memberOptions = appState.members.map(m => `<option value="${m.id}">${m.name} (餘額: ${m.balance})</option>`).join('');
-        const beerOptions = appState.inventory.filter(i => i.stock > 0).map(i => `<option value="${i.id}">${i.brand} ${i.name} ${i.ml}ml (庫存:${i.stock}, $${i.price})</option>`).join('');
+        const beerOptions = appState.inventory.filter(i => i.stock > 0).map(i => `<option value="${i.id}" data-barcode="${i.barcode || ''}">${i.brand} ${i.name} ${i.ml}ml (庫存:${i.stock}, $${i.price})</option>`).join('');
         
         $$('.member-select').forEach(sel => {
             const currentVal = sel.value;
             sel.innerHTML = `<option value="">請選擇會員</option>${memberOptions}`;
             if (sel.id === 'takeMemberSelect') sel.innerHTML += '<option value="non-member">非會員</option>';
-            if(appState.members.find(m => m.id === currentVal)) sel.value = currentVal;
+            if (sel.id === 'transactionMemberFilter') sel.innerHTML = `<option value="all">所有會員</option>${memberOptions}`;
+            if(appState.members.find(m => m.id === currentVal) || currentVal === 'all') sel.value = currentVal;
         });
         $$('.beer-select').forEach(sel => {
             const currentVal = sel.value;
@@ -202,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderMembersTable();
         renderInventoryTable();
         renderCharts();
+        renderTransactionsTable();
     }
 
     function renderPendingTopUps() {
@@ -253,6 +257,25 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>
         `).join('');
     }
+    
+    function renderTransactionsTable() {
+        const tbody = $('#transactionsTableBody');
+        if (!tbody) return;
+        const filterValue = $('#transactionMemberFilter').value;
+        const filteredTransactions = filterValue === 'all' 
+            ? appState.transactions 
+            : appState.transactions.filter(t => t.memberId === filterValue);
+
+        tbody.innerHTML = filteredTransactions.map(t => `
+            <tr>
+                <td>${formatDate(t.timestamp)}</td>
+                <td>${t.memberName || 'N/A'}</td>
+                <td>${t.type}</td>
+                <td>${t.itemName || 'N/A'}</td>
+                <td>${t.amount}</td>
+            </tr>
+        `).join('');
+    }
 
     function renderCharts() {
         Object.values(chartInstances).forEach(chart => {
@@ -280,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (memberSpendingCtx) {
             const spendingData = {};
             appState.transactions.forEach(t => {
-                if (t.memberName !== '非會員') {
+                if (t.memberName !== '非會員' && t.amount > 0) {
                     spendingData[t.memberName] = (spendingData[t.memberName] || 0) + t.amount;
                 }
             });
@@ -296,7 +319,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderEvents() {
-        // ... (此功能暫時不變)
+        const container = $('#eventsGrid');
+        if (!container) return;
+        container.innerHTML = (appState.activities || []).map(event => {
+            const isFull = event.participants.length >= event.capacity;
+            return `
+            <div class="event-card">
+                <div class="event-card__header"><h3>${event.title}</h3></div>
+                <div class="event-card__body">
+                    <p><strong>時間:</strong> ${formatDate(event.dateTime)}</p>
+                    <p><strong>地點:</strong> ${event.location}</p>
+                    <p><strong>人數:</strong> ${event.participants.length} / ${event.capacity}</p>
+                    <p><strong>費用:</strong> ${event.feeType === '前扣' ? `$${event.feeAmount}/人` : '後扣'}</p>
+                    <p>${event.description}</p>
+                    <p><strong>參與者:</strong> ${(event.participantNames || []).join(', ') || '尚無人報名'}</p>
+                </div>
+                <div class="event-card__footer">
+                    <button class="btn btn--primary btn-join-event" data-event-id="${event.id}" ${isFull ? 'disabled' : ''}>${isFull ? '已額滿' : '我要報名'}</button>
+                </div>
+            </div>`;
+        }).join('');
     }
 
     // ===== 功能邏輯與事件監聽 =====
@@ -401,9 +443,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 $('#inventoryFormTitle').textContent = '新增/編輯酒水';
                 target.classList.add('hidden');
             }
+
+            // NFC & 掃碼按鈕
+            if (target.matches('.nfc-btn')) {
+                const selectEl = target.previousElementSibling;
+                startNFCScan(selectEl);
+            }
+            if (target.matches('.scan-btn')) {
+                const selectEl = target.previousElementSibling;
+                startBarcodeScan(selectEl);
+            }
+
+            // 活動報名
+            if (target.matches('.btn-join-event')) {
+                const eventId = target.dataset.eventId;
+                $('#registerEventId').value = eventId;
+                const event = appState.activities.find(a => a.id === eventId);
+                if (event) {
+                    $('#eventRegisterTitle').textContent = `報名 - ${event.title}`;
+                    openModal('eventRegisterModal');
+                }
+            }
         });
 
         // 表單提交
+        $('#adminLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = $('#adminUsername').value;
+            const password = $('#adminPassword').value;
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                showToast('管理員登入成功', 'success');
+            } catch (error) {
+                const message = error.code.includes('wrong-password') || error.code.includes('user-not-found') ? '帳號或密碼錯誤' : '登入失敗';
+                showToast(message, 'error');
+            }
+        });
+
         $('#takeBeerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const memberId = $('#takeMemberSelect').value;
@@ -505,6 +581,148 @@ document.addEventListener('DOMContentLoaded', () => {
             $('#inventoryForm').reset();
             $('#inventoryFormTitle').textContent = '新增/編輯酒水';
             $('#cancelEditInventoryBtn').classList.add('hidden');
+        });
+
+        $('#exchangeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const memberId = $('#exchangeMemberSelect').value;
+            const outBeerId = $('#exchangeOutSelect').value;
+            const inBeerName = $('#exchangeName').value;
+            
+            if (!memberId || !outBeerId || !inBeerName) return showToast('請填寫所有必填欄位', 'warning');
+
+            const member = appState.members.find(m => m.id === memberId);
+            const outBeer = appState.inventory.find(i => i.id === outBeerId);
+
+            if (!member || !outBeer) return showToast('會員或換出酒款不存在', 'error');
+            if (outBeer.stock < 1) return showToast('換出酒款庫存不足', 'warning');
+
+            let inBeerBrand = $('#exchangeBrand').value;
+            if (inBeerBrand === 'other') inBeerBrand = $('#exchangeBrandCustom').value;
+            
+            let inBeerMl = $('#exchangeMl').value;
+            if (inBeerMl === 'other') inBeerMl = $('#exchangeMlCustom').value;
+
+            if (!inBeerBrand || !inBeerMl) return showToast('請提供新酒款的品牌和ml數', 'warning');
+
+            try {
+                const batch = db.batch();
+                // 扣除庫存
+                const outBeerRef = db.collection('inventory').doc(outBeerId);
+                batch.update(outBeerRef, { stock: firebase.firestore.FieldValue.increment(-1) });
+
+                // 新增換入的酒到庫存
+                const inBeerRef = db.collection('inventory').doc();
+                batch.set(inBeerRef, {
+                    brand: inBeerBrand,
+                    name: `${inBeerName} (換換酒)`,
+                    ml: inBeerMl,
+                    price: 30, // 換換酒固定價值30
+                    stock: 1,
+                    barcode: ''
+                });
+
+                // 記錄交易
+                const transactionRef = db.collection('transactions').doc();
+                batch.set(transactionRef, {
+                    type: 'exchange',
+                    memberId: member.id,
+                    memberName: member.name,
+                    itemName: `換出:${outBeer.brand} ${outBeer.name} / 換入:${inBeerBrand} ${inBeerName}`,
+                    amount: 0, // 換酒交易金額為0
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                await batch.commit();
+                showToast('換酒成功!', 'success');
+                e.target.reset();
+
+            } catch (error) {
+                console.error("換酒失敗:", error);
+                showToast('操作失敗，請稍後再試', 'error');
+            }
+        });
+
+        $('#sellForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const memberId = $('#sellMemberSelect').value;
+            const name = $('#sellName').value;
+            const totalPrice = Number($('#sellTotalPrice').value);
+            const unitPrice = Number($('#sellUnitPrice').value);
+
+            if (!memberId || !name || selectedQty === 0 || (!totalPrice && !unitPrice)) {
+                return showToast('請填寫所有必填欄位', 'warning');
+            }
+
+            const member = appState.members.find(m => m.id === memberId);
+            if (!member) return;
+
+            let brand = $('#sellBrand').value;
+            if (brand === 'other') brand = $('#sellBrandCustom').value;
+            
+            let ml = $('#sellMl').value;
+            if (ml === 'other') ml = $('#sellMlCustom').value;
+            
+            const finalUnitPrice = unitPrice || (totalPrice / selectedQty);
+
+            try {
+                // 賣酒直接增加庫存
+                await db.collection('inventory').add({
+                    brand, name, ml,
+                    price: finalUnitPrice,
+                    stock: selectedQty,
+                    barcode: $('#sellBarcode').value || ''
+                });
+
+                // 記錄交易
+                await db.collection('transactions').add({
+                    type: 'sell',
+                    memberId,
+                    memberName: member.name,
+                    itemName: `${brand} ${name} x${selectedQty}`,
+                    amount: -(finalUnitPrice * selectedQty), // 賣酒對系統是支出，記為負數
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                showToast('賣酒登記成功，已加入庫存', 'success');
+                e.target.reset();
+                $$('.qty-btn').forEach(b => b.classList.remove('selected'));
+                selectedQty = 0;
+
+            } catch (error) {
+                console.error("賣酒登記失敗:", error);
+                showToast('操作失敗，請稍後再試', 'error');
+            }
+        });
+
+        $('#createEventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = {
+                creatorId: $('#eventCreatorSelect').value,
+                creatorName: $('#eventCreatorSelect').options[$('#eventCreatorSelect').selectedIndex].text.split(' ')[0],
+                dateTime: firebase.firestore.Timestamp.fromDate(new Date($('#eventDateTime').value)),
+                title: $('#eventTitle').value,
+                location: $('#eventLocation').value,
+                capacity: Number($('#eventCapacity').value),
+                feeType: $('#eventFeeType').value,
+                feeAmount: Number($('#eventFeeAmount').value) || 0,
+                description: $('#eventDescription').value,
+                participants: [],
+                participantNames: []
+            };
+
+            if (!formData.creatorId || !formData.title || !formData.location || !formData.capacity) {
+                return showToast('請填寫所有必填欄位', 'warning');
+            }
+
+            try {
+                await db.collection('activities').add(formData);
+                showToast('活動建立成功!', 'success');
+                e.target.reset();
+            } catch (error) {
+                console.error("活動建立失敗:", error);
+                showToast('操作失敗，請稍後再試', 'error');
+            }
         });
     }
 
