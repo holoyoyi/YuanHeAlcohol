@@ -1,5 +1,5 @@
 /* ==========================================================================
-   員和共購酒水網 V0.43γ - JavaScript 應用程式 (功能完整修復版)
+   員和共購酒水網 V0.56γ - JavaScript 應用程式 (功能完整修復版)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ===== 全域狀態 =====
     let appState = {
-        inventory: [], members: [], activities: [], transactions: [], pendingTopUps: [],
+        inventory: [], members: [], activities: [], transactions: [], pendingTopUps: [], pendingSells: [],
         unsubscribe: {}
     };
     let chartInstances = {};
@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentEditingMemberId = null;
     let currentEditingInventoryId = null;
     let currentScannerTarget = {};
+    let confirmAction = null;
 
     // ===== DOM 元素快取 =====
     const $ = (selector) => document.querySelector(selector);
@@ -98,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupFirebaseListeners() {
         Object.values(appState.unsubscribe).forEach(unsub => unsub());
 
-        const collections = ['inventory', 'members', 'activities', 'transactions', 'pendingTopUps'];
+        const collections = ['inventory', 'members', 'activities', 'transactions', 'pendingTopUps', 'pendingSells'];
         collections.forEach(name => {
             const query = name === 'transactions' ? db.collection(name).orderBy('timestamp', 'desc') : db.collection(name);
             appState.unsubscribe[name] = query.onSnapshot(snapshot => {
@@ -202,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function renderAdminDashboard() {
         renderPendingTopUps();
+        renderPendingSells();
         renderMembersTable();
         renderInventoryTable();
         renderCharts();
@@ -228,6 +230,26 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     }
 
+    function renderPendingSells() {
+        const container = $('#pendingSells');
+        if (!container) return;
+        const pending = appState.pendingSells.filter(p => p.status === 'pending');
+        if (pending.length === 0) {
+            container.innerHTML = '<p>沒有待核可的賣酒申請。</p>';
+            return;
+        }
+        container.innerHTML = pending.map(p => `
+            <div class="approval-card">
+                <p><strong>${p.memberName}</strong> 申請賣 <strong>${p.item.brand} ${p.item.name} x${p.item.stock}</strong></p>
+                <small>單價: $${p.item.price}</small>
+                <div class="approval-actions">
+                    <button class="btn btn--sm btn--primary" data-approve-sell-id="${p.id}">核可</button>
+                    <button class="btn btn--sm btn--outline" data-reject-sell-id="${p.id}">拒絕</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
     function renderMembersTable() {
         const tbody = $('#membersTableBody');
         if (!tbody) return;
@@ -237,7 +259,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${m.room}</td>
                 <td>${m.nfcId || ''}</td>
                 <td>${m.balance}</td>
-                <td><button class="btn btn--sm" data-edit-member-id="${m.id}">編輯</button></td>
+                <td class="actions-cell">
+                    <button class="btn btn--sm" data-edit-member-id="${m.id}">編輯</button>
+                    <button class="btn btn--sm btn--danger" data-delete-member-id="${m.id}">刪除</button>
+                </td>
             </tr>
         `).join('');
     }
@@ -253,7 +278,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${i.price}</td>
                 <td>${i.stock}</td>
                 <td>${i.barcode || ''}</td>
-                <td><button class="btn btn--sm" data-edit-inventory-id="${i.id}">編輯</button></td>
+                <td class="actions-cell">
+                    <button class="btn btn--sm" data-edit-inventory-id="${i.id}">編輯</button>
+                    <button class="btn btn--sm btn--danger" data-delete-inventory-id="${i.id}">刪除</button>
+                </td>
             </tr>
         `).join('');
     }
@@ -666,25 +694,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const finalUnitPrice = unitPrice || (totalPrice / selectedQty);
 
             try {
-                // 賣酒直接增加庫存
-                await db.collection('inventory').add({
-                    brand, name, ml,
-                    price: finalUnitPrice,
-                    stock: selectedQty,
-                    barcode: $('#sellBarcode').value || ''
-                });
-
-                // 記錄交易
-                await db.collection('transactions').add({
-                    type: 'sell',
+                // 賣酒申請，進入待審核
+                await db.collection('pendingSells').add({
                     memberId,
                     memberName: member.name,
-                    itemName: `${brand} ${name} x${selectedQty}`,
-                    amount: -(finalUnitPrice * selectedQty), // 賣酒對系統是支出，記為負數
+                    item: {
+                        brand, name, ml,
+                        price: finalUnitPrice,
+                        stock: selectedQty,
+                        barcode: $('#sellBarcode').value || ''
+                    },
+                    status: 'pending',
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                showToast('賣酒登記成功，已加入庫存', 'success');
+                showToast('賣酒申請已提交，待管理員核可', 'success');
                 e.target.reset();
                 $$('.qty-btn').forEach(b => b.classList.remove('selected'));
                 selectedQty = 0;
@@ -697,9 +721,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         $('#createEventForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const creatorSelect = $('#eventCreatorSelect');
             const formData = {
-                creatorId: $('#eventCreatorSelect').value,
-                creatorName: $('#eventCreatorSelect').options[$('#eventCreatorSelect').selectedIndex].text.split(' ')[0],
+                creatorId: creatorSelect.value,
+                creatorName: creatorSelect.options[creatorSelect.selectedIndex].text.split(' ')[0],
                 dateTime: firebase.firestore.Timestamp.fromDate(new Date($('#eventDateTime').value)),
                 title: $('#eventTitle').value,
                 location: $('#eventLocation').value,
@@ -711,7 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 participantNames: []
             };
 
-            if (!formData.creatorId || !formData.title || !formData.location || !formData.capacity) {
+            if (!formData.creatorId || !formData.title || !formData.location || !formData.capacity || !$('#eventDateTime').value) {
                 return showToast('請填寫所有必填欄位', 'warning');
             }
 

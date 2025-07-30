@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>員和共購酒水網 V0.44γ</title>
+    <title>員和共購酒水網 V0.56γ</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,7 +28,7 @@
         <nav class="navbar">
             <div class="container">
                 <div class="nav-wrapper">
-                    <div class="logo"><h1>員和共購酒水網 V0.44γ</h1></div>
+                    <div class="logo"><h1>員和共購酒水網 V0.56γ</h1></div>
                     <button class="mobile-menu-toggle" id="mobileMenuToggle"><span></span><span></span><span></span></button>
                     <div class="nav-menu" id="navMenu">
                         <div class="nav-links">
@@ -133,7 +133,7 @@
                              <div class="form-group"><label class="form-label">全部總額</label><input type="number" id="sellTotalPrice" class="form-control" placeholder="總金額" min="1"></div>
                             <div class="form-group"><label class="form-label">每瓶單價</label><input type="number" id="sellUnitPrice" class="form-control" placeholder="單價" min="1"></div>
                         </div>
-                        <button type="submit" class="btn btn--primary btn--full-width">提交賣酒記錄</button>
+                        <button type="submit" class="btn btn--primary btn--full-width">提交賣酒申請</button>
                     </form>
                 </div>
             </div>
@@ -174,6 +174,8 @@
                     <div id="accountingTab" class="tab-content">
                         <h3>待核可儲值申請</h3>
                         <div id="pendingTopUps" class="approvals-grid"></div>
+                        <h3 style="margin-top: 32px;">待核可賣酒申請</h3>
+                        <div id="pendingSells" class="approvals-grid"></div>
                         <h3 style="margin-top: 32px;">交易紀錄</h3>
                         <div class="form-group">
                             <label for="transactionMemberFilter" class="form-label">篩選會員紀錄</label>
@@ -203,6 +205,7 @@
         <div id="scannerModal" class="modal"><div class="modal-backdrop"></div><div class="modal-content"><div class="modal-header"><h2>條碼掃描</h2><button class="modal-close">&times;</button></div><div class="modal-body"><div id="reader" style="width: 100%;"></div><p style="text-align:center; margin-top: 16px;">請對準條碼</p></div></div></div>
         <div id="eventRegisterModal" class="modal"><div class="modal-backdrop"></div><div class="modal-content"><div class="modal-header"><h2 id="eventRegisterTitle">活動報名</h2><button class="modal-close">&times;</button></div><div class="modal-body"><form id="eventRegisterForm"><input type="hidden" id="registerEventId"><div class="form-group"><label>會員選擇</label><div class="input-group"><select id="registerMemberSelect" class="form-control member-select" required></select><button type="button" class="btn btn--secondary nfc-btn">📱 NFC</button></div></div><button type="submit" class="btn btn--primary btn--full-width">確認報名</button></form></div></div></div>
         <div id="eventSettlementModal" class="modal"><div class="modal-backdrop"></div><div class="modal-content"><div class="modal-header"><h2>活動結算</h2><button class="modal-close">&times;</button></div><div class="modal-body"><form id="eventSettlementForm"><input type="hidden" id="settlementEventId"><div id="settlementItemsContainer"><h4>選擇消費酒水</h4><div class="settlement-item-row"><select class="beer-select"></select><input type="number" min="1" value="1" class="form-control" style="width: 80px;"></div></div><div class="form-actions" style="display:flex; gap: 16px;"><button type="button" id="addSettlementItemBtn" class="btn btn--secondary" style="flex:1;">新增酒款</button><button type="submit" class="btn btn--primary" style="flex:1;">確認結算</button></div><div id="settlementSummary" class="hidden" style="margin-top:16px; padding:16px; background: #f0f0f0; border-radius: 8px;"></div></form></div></div></div>
+        <div id="confirmModal" class="modal"><div class="modal-backdrop"></div><div class="modal-content"><div class="modal-header"><h2 id="confirmTitle">請確認</h2><button class="modal-close">&times;</button></div><div class="modal-body"><p id="confirmMessage">您確定要執行此操作嗎？</p></div><div class="modal-footer"><button id="confirmCancelBtn" class="btn btn--outline">取消</button><button id="confirmOkBtn" class="btn btn--primary">確定</button></div></div></div>
     </div>
     
     <!-- Custom Script -->

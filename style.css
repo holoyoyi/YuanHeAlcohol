@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CSS 樣式 (V0.43γ)
+   CSS 樣式 (V0.56γ)
    ========================================================================== */
 :root {
     --wine-red: #8B0000;
@@ -58,6 +58,8 @@ body { margin: 0; font-size: 16px; line-height: 1.6; }
 .btn--outline { background: transparent; border-color: var(--color-border); color: var(--color-text); }
 .btn--outline:hover { background: var(--color-secondary); border-color: var(--beer-gold); }
 .btn--sm { padding: 8px 12px; font-size: 14px; }
+.btn--danger { background-color: var(--color-error); color: white; }
+.btn--danger:hover { background-color: #b91c1c; }
 .btn--full-width { width: 100%; }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 
@@ -112,6 +114,7 @@ body { margin: 0; font-size: 16px; line-height: 1.6; }
 .data-table { width: 100%; border-collapse: collapse; }
 .data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--color-border); }
 .data-table th { background: var(--color-secondary); }
+.data-table .actions-cell { display: flex; gap: 8px; }
 .approvals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 .approval-card { padding: 16px; border: 1px solid var(--color-warning); border-radius: var(--radius-base); }
 .approval-actions { margin-top: 12px; display: flex; gap: 8px; }
@@ -123,6 +126,7 @@ body { margin: 0; font-size: 16px; line-height: 1.6; }
 .modal-header { padding: 16px 24px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
 .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
 .modal-body { padding: 24px; max-height: 70vh; overflow-y: auto;}
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: 12px; }
 
 .toast-container { position: fixed; top: 80px; right: 20px; z-index: 2000; }
 .toast { background: var(--color-surface); border-radius: var(--radius-base); padding: 16px; box-shadow: var(--shadow-lg); margin-bottom: 12px; min-width: 300px; border-left: 4px solid; opacity: 0; transform: translateX(120%); transition: all 0.4s cubic-bezier(0.21, 1.02, 0.73, 1); }
