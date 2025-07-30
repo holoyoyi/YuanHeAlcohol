@@ -1,6 +1,8 @@
 /* ==========================================================================
-   員和共購酒水網 V0.39γ - JavaScript 應用程式 (後台修復/功能完整版)
+   員和共購酒水網 V0.40γ - JavaScript 應用程式 (後台修復/功能完整版)
    ========================================================================== */
+
+// 整個腳本包在 DOMContentLoaded 事件中，確保 HTML 完全載入後才執行
 document.addEventListener('DOMContentLoaded', () => {
     // =================================================================================
     // 🔥🔥🔥 Firebase 設定區塊 🔥🔥🔥
@@ -256,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderCharts() {
-        // 清理舊圖表
         Object.values(chartInstances).forEach(chart => {
             if(chart && typeof chart.destroy === 'function') {
                 chart.destroy();
@@ -264,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         chartInstances = {};
 
-        // 熱銷酒款
         const popularItemsCtx = $('#popularItemsChart')?.getContext('2d');
         if (popularItemsCtx) {
             const salesData = {};
@@ -285,7 +285,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // 會員消費排行
         const memberSpendingCtx = $('#memberSpendingChart')?.getContext('2d');
         if (memberSpendingCtx) {
             const spendingData = {};
@@ -335,52 +334,118 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    // ===== 功能邏輯 =====
+    // ===== 功能邏輯與事件監聽 =====
     
-    $('#takeBeerForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const memberId = $('#takeMemberSelect').value;
-        const beerId = $('#takeBeerSelect').value;
-        if (!memberId || !beerId) return showToast('請選擇會員和酒款', 'warning');
-        
-        const beer = appState.inventory.find(i => i.id === beerId);
-        if (!beer || beer.stock < 1) return showToast('此酒款庫存不足', 'warning');
-
-        const price = (memberId === 'non-member') ? 35 : 30;
-        
-        try {
-            if (memberId !== 'non-member') {
-                const member = appState.members.find(m => m.id === memberId);
-                if (!member) return showToast('會員不存在', 'error');
-                if (member.balance < price) return showToast(`餘額不足 (尚需${price - member.balance}元)`, 'warning');
-                
-                await db.collection('members').doc(memberId).update({
-                    balance: firebase.firestore.FieldValue.increment(-price)
-                });
-            } else {
-                $('#nonMemberPayment').classList.remove('hidden');
+    function setupEventListeners() {
+        // 使用事件委派來處理動態生成的元素
+        document.body.addEventListener('click', async (e) => {
+            // 後台頁籤切換
+            if (e.target.matches('.tab-btn')) {
+                $$('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                $$('.tab-content').forEach(content => content.classList.remove('active'));
+                $(`#${e.target.dataset.tab}Tab`).classList.add('active');
+                if(e.target.dataset.tab === 'business') renderCharts();
             }
-            
-            await db.collection('inventory').doc(beerId).update({
-                stock: firebase.firestore.FieldValue.increment(-1)
-            });
-            
-            await db.collection('transactions').add({
-                type: 'take', memberId, itemId: beerId, amount: price,
-                itemName: `${beer.brand} ${beer.name}`,
-                memberName: memberId === 'non-member' ? '非會員' : appState.members.find(m=>m.id === memberId).name,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            showToast('取酒成功!', 'success');
-            e.target.reset();
-        } catch (error) {
-            console.error("取酒失敗:", error);
-            showToast('操作失敗，請稍後再試', 'error');
-        }
-    });
 
-    // ... (其他功能邏輯)
+            // 品牌庫存摺疊
+            if (e.target.closest('.brand-header')) {
+                e.target.closest('.brand-card').classList.toggle('expanded');
+            }
+
+            // 儲值核可/拒絕
+            if (e.target.dataset.approveId) {
+                const id = e.target.dataset.approveId;
+                const topUp = appState.pendingTopUps.find(p => p.id === id);
+                if(topUp) {
+                    await db.collection('members').doc(topUp.memberId).update({ balance: firebase.firestore.FieldValue.increment(topUp.amount) });
+                    await db.collection('pendingTopUps').doc(id).update({ status: 'approved' });
+                    showToast('儲值已核可', 'success');
+                }
+            }
+            if (e.target.dataset.rejectId) {
+                await db.collection('pendingTopUps').doc(e.target.dataset.rejectId).update({ status: 'rejected' });
+                showToast('儲值已拒絕', 'info');
+            }
+
+            // 會員編輯
+            if (e.target.dataset.editMemberId) {
+                const id = e.target.dataset.editMemberId;
+                const member = appState.members.find(m => m.id === id);
+                if (member) {
+                    currentEditingMemberId = id;
+                    $('#memberFormTitle').textContent = '編輯會員';
+                    $('#memberId').value = id;
+                    $('#memberNickname').value = member.name;
+                    $('#memberRoom').value = member.room;
+                    $('#memberNfcCode').value = member.nfcId || '';
+                    $('#memberBalance').value = member.balance;
+                    $('#cancelEditMemberBtn').classList.remove('hidden');
+                    $('#membersTab').scrollIntoView();
+                }
+            }
+
+            // 庫存編輯
+            if (e.target.dataset.editInventoryId) {
+                const id = e.target.dataset.editInventoryId;
+                const item = appState.inventory.find(i => i.id === id);
+                if(item) {
+                    currentEditingInventoryId = id;
+                    $('#inventoryFormTitle').textContent = '編輯酒水';
+                    $('#inventoryItemId').value = id;
+                    $('#inventoryBrand').value = item.brand;
+                    $('#inventoryName').value = item.name;
+                    $('#inventoryMl').value = item.ml;
+                    $('#inventoryPrice').value = item.price;
+                    $('#inventoryStock').value = item.stock;
+                    $('#inventoryBarcode').value = item.barcode || '';
+                    $('#cancelEditInventoryBtn').classList.remove('hidden');
+                    $('#inventoryTab').scrollIntoView();
+                }
+            }
+        });
+
+        $('#takeBeerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const memberId = $('#takeMemberSelect').value;
+            const beerId = $('#takeBeerSelect').value;
+            if (!memberId || !beerId) return showToast('請選擇會員和酒款', 'warning');
+            
+            const beer = appState.inventory.find(i => i.id === beerId);
+            if (!beer || beer.stock < 1) return showToast('此酒款庫存不足', 'warning');
+
+            const price = (memberId === 'non-member') ? 35 : 30;
+            
+            try {
+                if (memberId !== 'non-member') {
+                    const member = appState.members.find(m => m.id === memberId);
+                    if (!member) return showToast('會員不存在', 'error');
+                    if (member.balance < price) return showToast(`餘額不足 (尚需${price - member.balance}元)`, 'warning');
+                    
+                    await db.collection('members').doc(memberId).update({ balance: firebase.firestore.FieldValue.increment(-price) });
+                } else {
+                    $('#nonMemberPayment').classList.remove('hidden');
+                }
+                
+                await db.collection('inventory').doc(beerId).update({ stock: firebase.firestore.FieldValue.increment(-1) });
+                
+                await db.collection('transactions').add({
+                    type: 'take', memberId, itemId: beerId, amount: price,
+                    itemName: `${beer.brand} ${beer.name}`,
+                    memberName: memberId === 'non-member' ? '非會員' : appState.members.find(m=>m.id === memberId).name,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showToast('取酒成功!', 'success');
+                e.target.reset();
+            } catch (error) {
+                console.error("取酒失敗:", error);
+                showToast('操作失敗，請稍後再試', 'error');
+            }
+        });
+
+        // ... (其他表單提交事件)
+    }
 
     // ===== App 初始化 =====
     function init() {
@@ -419,11 +484,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(loggedIn) {
                 closeModal('loginModal');
-                // 移除自動建檔功能
-                // await seedInitialData(); 
                 setupFirebaseListeners();
             } else {
-                // 登出時取消監聽並清空本地資料
                 Object.values(appState.unsubscribe).forEach(unsub => unsub());
                 appState = { inventory: [], members: [], activities: [], transactions: [], pendingTopUps: [], unsubscribe: {} };
                 rerenderAll();
@@ -434,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 初始顯示首頁
+        setupEventListeners();
         showPage('home');
     }
 
