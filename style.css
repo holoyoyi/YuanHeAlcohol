@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CSS 樣式 (V0.56γ)
+   CSS 樣式 (V0.61γ)
    ========================================================================== */
 :root {
     --wine-red: #8B0000;
@@ -31,6 +31,30 @@ html { font-family: var(--font-family-base); background-color: var(--color-backg
 body { margin: 0; font-size: 16px; line-height: 1.6; }
 *, *::before, *::after { box-sizing: border-box; }
 .container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+
+#firebase-config-error {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    text-align: center;
+}
+#firebase-config-error.hidden {
+    display: none;
+}
+.config-error-content {
+    background-color: var(--wine-red);
+    padding: 40px;
+    border-radius: var(--radius-lg);
+    max-width: 600px;
+}
 
 .page { display: none; padding: 32px 0; animation: fadeIn 0.4s ease-out; }
 .page.active { display: block; }
@@ -69,15 +93,17 @@ body { margin: 0; font-size: 16px; line-height: 1.6; }
 .form-control { display: block; width: 100%; padding: 12px; font-size: 16px; background-color: var(--color-background); border: 1px solid var(--color-border); border-radius: var(--radius-base); transition: var(--transition-base); }
 .form-control:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.1); }
 .input-group { display: flex; gap: 8px; align-items: center; }
+.input-group .form-control { flex-grow: 1; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-actions { margin-top: 24px; }
 
 .card { background-color: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-card-border); box-shadow: var(--shadow-sm); margin-bottom: 24px; }
 .card__body { padding: 24px; }
 .info-section { margin-bottom: 32px; }
-.info-card { background: var(--color-secondary); padding: 24px; border-radius: var(--radius-lg); border-left: 4px solid var(--beer-gold); }
-.info-card h3 { color: var(--wine-red); margin-top: 0; }
-.info-card-content { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; }
+.info-card { background: var(--color-secondary); padding: 24px; border-radius: var(--radius-lg); border-left: 4px solid var(--beer-gold); line-height: 1.8; }
+.info-card h3 { color: var(--wine-red); margin-top: 0; margin-bottom: 16px; }
+.info-card p, .info-card li { color: var(--color-text-secondary); }
+.info-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; }
 
 .milestones-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; margin-bottom: 32px; }
 .milestone-card { background: var(--color-surface); border-radius: var(--radius-lg); padding: 24px; text-align: center; box-shadow: var(--shadow-md); border-top: 4px solid var(--beer-gold); transition: var(--transition-base); }
@@ -108,7 +134,7 @@ body { margin: 0; font-size: 16px; line-height: 1.6; }
 .tab-btn { padding: 16px 24px; border: none; background: transparent; color: var(--color-text-secondary); font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
 .tab-btn.active { color: var(--wine-red); border-bottom-color: var(--wine-red); }
 .tab-content { display: none; }
-.tab-content.active { display: block; }
+.tab-content.active { display: block; animation: fadeIn 0.4s; }
 .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; }
 .table-container { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; }
@@ -119,6 +145,22 @@ body { margin: 0; font-size: 16px; line-height: 1.6; }
 .approval-card { padding: 16px; border: 1px solid var(--color-warning); border-radius: var(--radius-base); }
 .approval-actions { margin-top: 12px; display: flex; gap: 8px; }
 
+.records-section { margin-top: 32px; }
+.records-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.record-card { background-color: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--radius-lg); cursor: pointer; transition: var(--transition-base); }
+.record-card:hover { box-shadow: var(--shadow-md); }
+.record-card-header { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.record-card-header-main { display: flex; justify-content: space-between; align-items: center; }
+.record-card-title { font-weight: 700; font-size: 18px; }
+.record-card-summary { font-size: 14px; color: var(--color-text-secondary); }
+.record-card-progress-bar { width: 100%; height: 6px; background-color: var(--color-border); border-radius: 99px; overflow: hidden; }
+.record-card-progress { height: 100%; background-color: var(--beer-gold); transition: width 0.4s ease-out; }
+.record-card-details { max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out; }
+.record-card.expanded .record-card-details { max-height: 500px; }
+.record-details-list { padding: 0 16px 16px; }
+.record-detail-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--color-card-border); font-size: 14px; }
+.record-detail-item:last-child { border-bottom: none; }
+
 .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1001; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); animation: fadeIn 0.2s; }
 .modal.active { display: flex; }
 .modal-content { background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 90%; max-width: 500px; z-index: 1; animation: slideUp 0.3s ease-out; }
@@ -128,7 +170,7 @@ body { margin: 0; font-size: 16px; line-height: 1.6; }
 .modal-body { padding: 24px; max-height: 70vh; overflow-y: auto;}
 .modal-footer { padding: 16px 24px; border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: 12px; }
 
-.toast-container { position: fixed; top: 80px; right: 20px; z-index: 2000; }
+#toastContainer { position: fixed; top: 80px; right: 20px; z-index: 2000; }
 .toast { background: var(--color-surface); border-radius: var(--radius-base); padding: 16px; box-shadow: var(--shadow-lg); margin-bottom: 12px; min-width: 300px; border-left: 4px solid; opacity: 0; transform: translateX(120%); transition: all 0.4s cubic-bezier(0.21, 1.02, 0.73, 1); }
 .toast.show { opacity: 1; transform: translateX(0); }
 .toast--success { border-color: var(--color-success); }
@@ -142,11 +184,24 @@ body { margin: 0; font-size: 16px; line-height: 1.6; }
 .event-card { background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; display: flex; flex-direction: column; }
 .event-card__header { padding: 16px; background: var(--color-secondary); }
 .event-card__body { padding: 16px; flex-grow: 1; }
-.event-card__footer { padding: 16px; border-top: 1px solid var(--color-border); display: flex; gap: 12px; }
+.event-card__footer { padding: 16px; border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; gap: 12px; }
 .event-card__footer .btn { flex: 1; }
 .event-admin-actions { display: flex; gap: 8px; margin-top: 12px; }
 
+.settlement-item-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+
 .hidden { display: none !important; }
+
+[contenteditable="true"] {
+    outline: 2px dashed var(--color-info);
+    cursor: text;
+}
+.editable-icon {
+    font-size: 12px;
+    color: var(--color-info);
+    margin-left: 4px;
+    cursor: pointer;
+}
 
 @media (max-width: 768px) {
     .nav-menu { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--wine-red); flex-direction: column; padding: 16px; box-shadow: var(--shadow-lg); }
@@ -155,5 +210,5 @@ body { margin: 0; font-size: 16px; line-height: 1.6; }
     .mobile-menu-toggle { display: flex; }
     .form-row { grid-template-columns: 1fr; }
     .charts-grid { grid-template-columns: 1fr; }
-    .info-card-content { grid-template-columns: 1fr; }
+    .info-card-grid { grid-template-columns: 1fr; }
 }

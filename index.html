@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>員和共購酒水網 V0.56γ</title>
+    <title>員和共購酒水網 V0.61γ</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,12 +23,20 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="firebase-config-error" class="hidden">
+        <div class="config-error-content">
+            <h1>🔥 Firebase 設定無效</h1>
+            <p>系統無法連接到資料庫。請檢查 `app.js` 檔案中的 `firebaseConfig` 物件是否已填入您個人的 Firebase 專案金鑰。</p>
+            <p>這是一個關鍵步驟，否則網站將無法運作。</p>
+        </div>
+    </div>
+
     <div id="app">
         <!-- Navigation -->
         <nav class="navbar">
             <div class="container">
                 <div class="nav-wrapper">
-                    <div class="logo"><h1>員和共購酒水網 V0.56γ</h1></div>
+                    <div class="logo"><h1>員和共購酒水網 V0.61γ</h1></div>
                     <button class="mobile-menu-toggle" id="mobileMenuToggle"><span></span><span></span><span></span></button>
                     <div class="nav-menu" id="navMenu">
                         <div class="nav-links">
@@ -70,7 +78,7 @@
                         <button type="submit" class="btn btn--primary btn--full-width">確認取酒</button>
                     </form>
                 </div>
-                <div id="nonMemberPayment" class="card payment-info hidden"><div class="card__body"><h3>🏦 非會員付款資訊</h3><p>Hi~麻煩轉帳35$至台新銀行(812)帳號是28881001333855</p><p>或是點擊連結開啟Richart APP可以直接帶入我的帳號唷</p><a href="https://richart.tw/TSDIB_RichartWeb/RC04/RC040300?token=8E0F4A802C7093B4DC6FB4D553667015" target="_blank" class="btn btn--primary">開啟 Richart APP</a></div></div>
+                <div id="nonMemberPayment" class="card payment-info hidden" style="border-color: var(--color-info);"><div class="card__body"><h3>🏦 非會員付款資訊</h3><p>Hi~麻煩轉帳35$至台新銀行(812)帳號是28881001333855</p><p>或是點擊連結開啟Richart APP可以直接帶入我的帳號唷</p><a href="https://richart.tw/TSDIB_RichartWeb/RC04/RC040300?token=8E0F4A802C7093B4DC6FB4D553667015" target="_blank" class="btn btn--primary">開啟 Richart APP</a></div></div>
                 <h2>即時庫存</h2>
                 <div id="brandInventory" class="brand-inventory"></div>
             </div>
@@ -80,19 +88,23 @@
         <main id="exchange" class="page">
             <div class="container">
                 <h2>換換酒 (會員限定)</h2>
-                <div class="info-section"><div class="info-card"><p>會員可以酒換酒，品項不限制，提升酒類多樣化。提供的酒款價格不限，一律當作30$，可直接換取庫存酒款，或扣儲值金加價購換高價酒款。</p></div></div>
+                <div class="info-section"><div class="info-card"><p>會員可以酒換酒，品項不限制，提升酒類多樣化。提供的酒款價格不限，一律當作30$，可直接換取庫存酒款。若換取高價酒款，將從儲值金扣除差價。</p></div></div>
                 <div class="form-section">
                     <form id="exchangeForm">
                         <div class="form-group"><label class="form-label">會員選擇</label><div class="input-group"><select id="exchangeMemberSelect" class="form-control member-select" required></select><button type="button" class="btn btn--secondary nfc-btn">📱 NFC</button></div></div>
-                        <div class="form-group"><label class="form-label">換出酒款 (從庫存)</label><div class="input-group"><select id="exchangeOutSelect" class="form-control beer-select" required></select><button type="button" class="btn btn--secondary scan-btn">📷 掃碼</button></div></div>
-                        <h4>您提供的酒款 (三格建檔)</h4>
+                        <div class="form-group"><label class="form-label">您想換的酒 (從庫存)</label><div class="input-group"><select id="exchangeOutSelect" class="form-control beer-select" required></select><button type="button" class="btn btn--secondary scan-btn">📷 掃碼</button></div></div>
+                        <h4>您提供的酒 (三格建檔)</h4>
                         <div class="form-row">
-                            <div class="form-group"><label class="form-label">品牌</label><select id="exchangeBrand" class="form-control brand-select" required></select><input type="text" id="exchangeBrandCustom" class="form-control hidden" placeholder="請輸入品牌" style="margin-top: 8px;"></div>
+                            <div class="form-group"><label class="form-label">品牌</label><select id="exchangeBrand" class="form-control brand-select" required></select><input type="text" id="exchangeBrandCustom" class="form-control hidden" placeholder="請輸入新品牌" style="margin-top: 8px;"></div>
                             <div class="form-group"><label class="form-label">酒款名</label><input type="text" id="exchangeName" class="form-control" required placeholder="例如: 經典"></div>
                             <div class="form-group"><label class="form-label">ml數</label><select id="exchangeMl" class="form-control ml-select" required></select><input type="number" id="exchangeMlCustom" class="form-control hidden" placeholder="請輸入ml數" style="margin-top: 8px;"></div>
                         </div>
                         <button type="submit" class="btn btn--primary btn--full-width">確認換酒</button>
                     </form>
+                </div>
+                <div class="records-section">
+                    <h2>會員換酒紀錄</h2>
+                    <div id="exchangeRecords" class="records-grid"></div>
                 </div>
             </div>
         </main>
@@ -101,13 +113,17 @@
         <main id="buy" class="page">
             <div class="container">
                 <h2>買酒儲值 (會員限定)</h2>
-                <div class="info-section"><div class="info-card"><h3>📋 個人買酒流程說明</h3><p>🍺 <b>買酒流程：</b>進入取酒登記頁面，選擇你要的酒款，任意口味固定價格30元（試營運期間優惠價格）</p><p>💳 <b>儲值說明：</b>使用按鈕式快速儲值：500元、1000元、1500元、2000元。最小儲值單位為500元。</p><p>✅ <b>核可流程：</b>儲值後需要管理員核可，核可後才能正式使用。</p></div></div>
+                 <div class="info-section"><div class="info-card"><h3>📋 個人買酒流程說明</h3><p>🍺 <b>買酒流程：</b>進入取酒登記頁面，選擇你要的酒款，任意口味固定價格30元（試營運期間優惠價格）</p><p>💳 <b>儲值說明：</b>使用按鈕式快速儲值：500元、1000元、1500元、2000元。最小儲值單位為500元。</p><p>✅ <b>核可流程：</b>儲值後需要管理員核可，核可後才能正式使用。</p></div></div>
                 <div class="form-section">
                     <form id="rechargeForm">
                         <div class="form-group"><label class="form-label">會員選擇</label><div class="input-group"><select id="rechargeMemberSelect" class="form-control member-select" required></select><button type="button" class="btn btn--secondary nfc-btn">📱 NFC</button></div></div>
                         <div class="form-group"><label class="form-label">按鈕式快速儲值</label><div class="amount-buttons"><button type="button" class="amount-btn" data-amount="500">NT$ 500</button><button type="button" class="amount-btn" data-amount="1000">NT$ 1000</button><button type="button" class="amount-btn" data-amount="1500">NT$ 1500</button><button type="button" class="amount-btn" data-amount="2000">NT$ 2000</button></div></div>
                         <button type="submit" class="btn btn--primary btn--full-width">提交儲值申請</button>
                     </form>
+                </div>
+                 <div class="records-section">
+                    <h2>會員儲值與消費紀錄</h2>
+                    <div id="topupRecords" class="records-grid"></div>
                 </div>
             </div>
         </main>
@@ -116,14 +132,14 @@
         <main id="sell" class="page">
             <div class="container">
                 <h2>賣酒登記 (會員限定)</h2>
-                <div class="info-section"><div class="info-card" style="grid-column: 1 / -1;"><h3>📋 個人賣酒流程說明</h3><div class="info-card-content"><div><h4>模式 A：統一批量採購</h4><p>統一由魯迪&志願者2號採購批量酒，前期嘗試不收運費或攤提在30元內。這種模式可以壓低成本，讓大家享受優惠價格。</p></div><div><h4>模式 B：高價酒款銷售</h4><p>會員可買高價酒款銷售於本網站，46-70元區間，採用階梯式定價。銷售前請先於群組告知。</p></div></div></div></div>
+                <div class="info-section"><div class="info-card" style="grid-column: 1 / -1;"><h3>📋 個人賣酒流程說明</h3><div class="info-card-grid"><div><h4>模式 A：統一批量採購</h4><p>統一由魯迪&志願者2號採購批量酒，前期嘗試不收運費或攤提在30元內。這種模式可以壓低成本，讓大家享受優惠價格。</p></div><div><h4>模式 B：高價酒款銷售</h4><p>會員可買高價酒款銷售於本網站，46-70元區間，採用階梯式定價。銷售前請先於群組告知。</p></div></div></div></div>
                 <div class="form-section">
                      <form id="sellForm">
                         <div class="form-group"><label class="form-label">會員選擇</label><div class="input-group"><select id="sellMemberSelect" class="form-control member-select" required></select><button type="button" class="btn btn--secondary nfc-btn">📱 NFC</button></div></div>
                         <div class="form-group"><label class="form-label">條碼 (選填)</label><div class="input-group"><input type="text" id="sellBarcode" class="form-control" placeholder="掃描條碼自動帶入資料"><button type="button" class="btn btn--secondary scan-btn">📷 掃碼</button></div></div>
                         <h4>三格建檔</h4>
                         <div class="form-row">
-                             <div class="form-group"><label class="form-label">品牌</label><select id="sellBrand" class="form-control brand-select" required></select><input type="text" id="sellBrandCustom" class="form-control hidden" placeholder="請輸入品牌" style="margin-top: 8px;"></div>
+                             <div class="form-group"><label class="form-label">品牌</label><select id="sellBrand" class="form-control brand-select" required></select><input type="text" id="sellBrandCustom" class="form-control hidden" placeholder="請輸入新品牌" style="margin-top: 8px;"></div>
                             <div class="form-group"><label class="form-label">酒款名</label><input type="text" id="sellName" class="form-control" required placeholder="例如: 經典"></div>
                              <div class="form-group"><label class="form-label">ml數</label><select id="sellMl" class="form-control ml-select" required></select><input type="number" id="sellMlCustom" class="form-control hidden" placeholder="請輸入ml數" style="margin-top: 8px;"></div>
                         </div>
@@ -135,6 +151,10 @@
                         </div>
                         <button type="submit" class="btn btn--primary btn--full-width">提交賣酒申請</button>
                     </form>
+                </div>
+                 <div class="records-section">
+                    <h2>會員銷售紀錄</h2>
+                    <div id="sellRecords" class="records-grid"></div>
                 </div>
             </div>
         </main>
@@ -170,8 +190,10 @@
                         <button class="tab-btn" data-tab="inventory">庫存管理</button>
                         <button class="tab-btn" data-tab="members">會員管理</button>
                     </div>
-                    <div id="businessTab" class="tab-content active"><div class="charts-grid"><div class="card chart-card"><h3>熱銷酒款排行</h3><canvas id="popularItemsChart"></canvas></div><div class="card chart-card"><h3>會員消費總額排行</h3><canvas id="memberSpendingChart"></canvas></div></div></div>
+                    <div id="businessTab" class="tab-content active"><div class="charts-grid"><div class="card chart-card"><h3>熱銷酒款排行</h3><canvas id="popularItemsChart"></canvas></div><div class="card chart-card"><h3>會員消費總額排行</h3><canvas id="memberSpendingChart"></canvas></div><div class="card chart-card"><h3>酒基金變化</h3><canvas id="fundChart"></canvas></div></div></div>
                     <div id="accountingTab" class="tab-content">
+                        <h3>財務概況</h3>
+                        <div class="milestones-grid" style="margin-bottom: 32px;"><div class="milestone-card"><h4>總收入</h4><p class="milestone-value" id="totalIncome">$0</p></div><div class="milestone-card"><h4>總支出</h4><p class="milestone-value" id="totalExpense">$0</p></div><div class="milestone-card"><h4>淨利潤</h4><p class="milestone-value" id="netProfit">$0</p></div></div>
                         <h3>待核可儲值申請</h3>
                         <div id="pendingTopUps" class="approvals-grid"></div>
                         <h3 style="margin-top: 32px;">待核可賣酒申請</h3>
@@ -193,7 +215,7 @@
                          <div class="table-container"><table class="data-table"><thead><tr><th>品牌</th><th>酒款</th><th>ml</th><th>價格</th><th>庫存</th><th>條碼</th><th>操作</th></tr></thead><tbody id="inventoryTableBody"></tbody></table></div>
                     </div>
                     <div id="membersTab" class="tab-content">
-                        <div class="form-section"><h3 id="memberFormTitle">新增/編輯會員</h3><form id="memberForm"><input type="hidden" id="memberId"><div class="form-row"><div class="form-group"><label>暱稱</label><input type="text" id="memberNickname" class="form-control" required></div><div class="form-group"><label>房號</label><input type="text" id="memberRoom" class="form-control" required></div></div><div class="form-row"><div class="form-group"><label>NFC碼</label><div class="input-group"><input type="text" id="memberNfcCode" class="form-control" placeholder="感應自動填入"><button type="button" class="btn btn--secondary nfc-btn">📱 NFC</button></div></div><div class="form-group"><label>餘額</label><input type="number" id="memberBalance" class="form-control" value="0"></div></div><button type="submit" class="btn btn--primary">儲存會員</button><button type="button" id="cancelEditMemberBtn" class="btn btn--outline hidden" style="margin-left: 12px;">取消編輯</button></form></div>
+                        <div class="form-section"><h3 id="memberFormTitle">新增/編輯會員</h3><form id="memberForm"><input type="hidden" id="memberId"><div class="form-row"><div class="form-group"><label>暱稱</label><input type="text" id="memberNickname" class="form-control" required></div><div class="form-group"><label>房號</label><input type="text" id="memberRoom" class="form-control" required></div></div><div class="form-row"><div class="form-group"><label>NFC碼</label><div class="input-group"><input type="text" id="memberNfcCode" class="form-control" placeholder="感應自動填入"><button type="button" class="btn btn--secondary nfc-btn">📱 NFC</button></div></div><div class="form-group"><label>餘額</label><input type="number" id="memberBalance" class="form-control" value="0"></div></div><div class="form-actions" style="display:flex; gap: 16px;"><button type="submit" class="btn btn--primary" style="flex: 1;">儲存會員</button><button type="button" id="cancelEditMemberBtn" class="btn btn--outline hidden" style="flex: 1;">取消編輯</button></div></form></div>
                         <div class="table-container"><table class="data-table"><thead><tr><th>暱稱</th><th>房號</th><th>NFC碼</th><th>餘額</th><th>操作</th></tr></thead><tbody id="membersTableBody"></tbody></table></div>
                     </div>
                 </div>
@@ -204,7 +226,7 @@
         <div id="loginModal" class="modal"><div class="modal-backdrop"></div><div class="modal-content"><div class="modal-header"><h2>後台管理登入</h2><button class="modal-close">&times;</button></div><div class="modal-body"><form id="adminLoginForm"><div class="form-group"><label class="form-label">帳號 (Email)</label><input type="email" id="adminUsername" class="form-control" required></div><div class="form-group"><label class="form-label">密碼</label><input type="password" id="adminPassword" class="form-control" required></div><button type="submit" class="btn btn--primary btn--full-width">登入</button></form></div></div></div>
         <div id="scannerModal" class="modal"><div class="modal-backdrop"></div><div class="modal-content"><div class="modal-header"><h2>條碼掃描</h2><button class="modal-close">&times;</button></div><div class="modal-body"><div id="reader" style="width: 100%;"></div><p style="text-align:center; margin-top: 16px;">請對準條碼</p></div></div></div>
         <div id="eventRegisterModal" class="modal"><div class="modal-backdrop"></div><div class="modal-content"><div class="modal-header"><h2 id="eventRegisterTitle">活動報名</h2><button class="modal-close">&times;</button></div><div class="modal-body"><form id="eventRegisterForm"><input type="hidden" id="registerEventId"><div class="form-group"><label>會員選擇</label><div class="input-group"><select id="registerMemberSelect" class="form-control member-select" required></select><button type="button" class="btn btn--secondary nfc-btn">📱 NFC</button></div></div><button type="submit" class="btn btn--primary btn--full-width">確認報名</button></form></div></div></div>
-        <div id="eventSettlementModal" class="modal"><div class="modal-backdrop"></div><div class="modal-content"><div class="modal-header"><h2>活動結算</h2><button class="modal-close">&times;</button></div><div class="modal-body"><form id="eventSettlementForm"><input type="hidden" id="settlementEventId"><div id="settlementItemsContainer"><h4>選擇消費酒水</h4><div class="settlement-item-row"><select class="beer-select"></select><input type="number" min="1" value="1" class="form-control" style="width: 80px;"></div></div><div class="form-actions" style="display:flex; gap: 16px;"><button type="button" id="addSettlementItemBtn" class="btn btn--secondary" style="flex:1;">新增酒款</button><button type="submit" class="btn btn--primary" style="flex:1;">確認結算</button></div><div id="settlementSummary" class="hidden" style="margin-top:16px; padding:16px; background: #f0f0f0; border-radius: 8px;"></div></form></div></div></div>
+        <div id="eventSettlementModal" class="modal"><div class="modal-backdrop"></div><div class="modal-content"><div class="modal-header"><h2>活動結算</h2><button class="modal-close">&times;</button></div><div class="modal-body"><form id="eventSettlementForm"><input type="hidden" id="settlementEventId"><h4>選擇消費酒水</h4><div id="settlementItemsContainer"></div><div class="form-actions" style="display:flex; gap: 16px;"><button type="button" id="addSettlementItemBtn" class="btn btn--secondary" style="flex:1;">新增酒款</button><button type="submit" class="btn btn--primary" style="flex:1;">確認結算</button></div><div id="settlementSummary" class="hidden" style="margin-top:16px; padding:16px; background: #f0f0f0; border-radius: 8px;"></div></form></div></div></div>
         <div id="confirmModal" class="modal"><div class="modal-backdrop"></div><div class="modal-content"><div class="modal-header"><h2 id="confirmTitle">請確認</h2><button class="modal-close">&times;</button></div><div class="modal-body"><p id="confirmMessage">您確定要執行此操作嗎？</p></div><div class="modal-footer"><button id="confirmCancelBtn" class="btn btn--outline">取消</button><button id="confirmOkBtn" class="btn btn--primary">確定</button></div></div></div>
     </div>
     
